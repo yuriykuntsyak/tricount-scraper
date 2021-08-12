@@ -14,5 +14,9 @@ pip3 install -r requirements.txt
 
 ## Usage
 ```sh
-TRICOUNT_URL=https://tricount.com/en/abcdefghijklm USER_NAME=user LOGLEVEL=20 ./main.py
+TRICOUNT_URL=https://tricount.com/en/abcdefghijklm USER_NAME=user LOGLEVEL=20 ./get_payments.py
+```
+
+```sh
+TRICOUNT_URL=https://tricount.com/en/abcdefghijklm USER_NAME=user EXPENSE_DATE=01/01/2021 EXPENSE_DESCRIPTION='Test expense' EXPENSE_AMOUNT='9.99' ./put_payments.py
 ```

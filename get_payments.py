@@ -22,6 +22,8 @@ webdriver_options.add_experimental_option('useAutomationExtension', False)
 
 payments = []
 
+logging.info(f"Getting all the payments for user {USER_NAME}.")
+
 with webdriver.Chrome('chromedriver', options=webdriver_options) as driver:
     driver.execute_script("Object.defineProperty(navigator, 'webdriver', {get: () => undefined})")
 
