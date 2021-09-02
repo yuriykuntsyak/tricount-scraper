@@ -12,6 +12,8 @@ from selenium.webdriver.support import expected_conditions
 from selenium.common.exceptions import TimeoutException
 from const import *
 
+from time import sleep
+
 import logging
 logging.basicConfig(level=int(LOGLEVEL))
 
@@ -59,7 +61,7 @@ def wait_for_elements_presence(
         except TimeoutException:
             raise ElementNotLoadedError(elements_description)
 
-def is_on_pre_users_list(webdriver: webdriver) -> None:
+def is_on_pre_users_list(webdriver: webdriver) -> bool:
     """Making sure we the user list is actually loaded."""
     try:
         wait_for_elements_presence(webdriver, locator=By.ID, elements_list=[IFRAME_ID], elements_description="pre user list")
@@ -67,7 +69,7 @@ def is_on_pre_users_list(webdriver: webdriver) -> None:
         return False
     return True
 
-def is_on_users_list(webdriver: webdriver) -> None:
+def is_on_users_list(webdriver: webdriver) -> bool:
     """Making sure we the user list is actually loaded."""
     try:
         wait_for_elements_presence(webdriver, locator=By.XPATH, elements_list=[USER_XPATH], elements_description="user list")
@@ -75,23 +77,29 @@ def is_on_users_list(webdriver: webdriver) -> None:
         return False
     return True
 
-def is_on_expenses_list(webdriver: webdriver) -> None:
-    """Making sure we the expense list is actually loaded."""
+def is_on_expenses_list(webdriver: webdriver) -> bool:
+    """Making sure we the expenses list is actually loaded."""
     try:
-        wait_for_elements_presence(webdriver, locator=By.XPATH, elements_list=[ADD_EXPENSE_XPATH], elements_description="expense list")
+        wait_for_elements_presence(
+            webdriver,
+            locator=By.XPATH,
+            elements_list=[ADD_EXPENSE_XPATH, PAYMENTS_TABLE_XPATH],
+            elements_description="expenses list"
+        )
     except ElementNotLoadedError:
         return False
     return True
 
-def is_on_expense_form(webdriver: webdriver) -> None:
+def is_on_expense_form(webdriver: webdriver) -> bool:
     """Making sure we the expense form is actually loaded."""
 
     try:
         wait_for_elements_presence(
             webdriver,
             locator=By.XPATH,
-            elements_list=[SAVE_PAYMENT_XPATH],
-            elements_description="expense form"
+            elements_list=[SAVE_PAYMENT_XPATH, PAYMENT_AMOUNT_XPATH],
+            elements_description="expense form",
+            #wait_timeout=20
         )
     except ElementNotLoadedError:
         return False
@@ -117,10 +125,10 @@ def current_page_name(webdriver: webdriver, valid_url: str = "tricount.com") -> 
     if webdriver.current_url.find(valid_url) == -1:
         raise InvalidUrlError(expected_url=valid_url, current_url=webdriver.current_url)
 
-    if is_on_expenses_list(webdriver):
-        return "expenses_list"
-    elif is_on_expense_form(webdriver):
+    if is_on_expense_form(webdriver):
         return "expense_form"
+    elif is_on_expenses_list(webdriver):
+        return "expenses_list"
     elif is_on_users_list(webdriver):
         return "users_list"
     elif is_on_pre_users_list(webdriver):
@@ -146,8 +154,10 @@ def browse_to(webdriver: webdriver, page_name: str, nav_steps_limit: int = 10) -
     try:
         current_page = current_page_name(webdriver)
     except InvalidUrlError:
+        logging.debug("InvalidUrlError while calling current_page_name")
         current_page = "invalid_url"
     except InvalidPageError:
+        logging.debug("InvalidPageError while calling current_page_name")
         current_page = "invalid_url"
     finally:
         logging.debug(f"browse_to: current_page={current_page}.")
@@ -161,19 +171,19 @@ def browse_to(webdriver: webdriver, page_name: str, nav_steps_limit: int = 10) -
         return False
     else:
         if PAGE_NAV_ORDER.index(current_page) < PAGE_NAV_ORDER.index(page_name):
-            logging.debug("browse_to: next page")
-            open_link(webdriver, ELEMENTS_PER_PAGE[current_page]["element"])
+            elements = ELEMENTS_PER_PAGE[current_page]["elements"]
+            locator  = ELEMENTS_PER_PAGE[current_page]["locator"]
+
+            logging.debug("browse_to: navigating to next page...")
+            wait_for_elements_presence(webdriver, locator=locator, elements_list=elements, elements_description=current_page, wait_timeout=15)
+            open_link(webdriver, elements[0])
+
         else:
             # browse to initial page
             logging.debug(f"browse_to: running HTTP GET {TRICOUNT_URL}")
             webdriver.get(url=TRICOUNT_URL)
             logging.debug(f"browse_to: ensuring iframe is loaded")
-            wait_for_elements_presence(
-                webdriver=webdriver,
-                locator=By.ID,
-                elements_list=[IFRAME_ID],
-                elements_description="iframe"
-            )
+            wait_for_elements_presence(webdriver, locator=By.ID, elements_list=[IFRAME_ID], elements_description="iframe")
             logging.debug(f"browse_to: Switching to iframe {IFRAME_ID}.") 
             webdriver.switch_to.frame(webdriver.find_element_by_id(IFRAME_ID))
 
@@ -187,18 +197,45 @@ def fill_textbox(webdriver: webdriver, text_xpath: str, text_content: str) -> No
     """Fills out a text box located by xpath."""
     webdriver.find_element_by_xpath(text_xpath).send_keys(text_content)
 
+def get_user_list(webdriver: webdriver) -> list:
+    """Gets list of users from users_list page."""
+    users = []
+    users_xpath = '//*[@id="slot1"]/table/tbody/tr[4]/td/table/tbody/tr/td[2]/div/table/tbody/tr/td[1]/div/div/table/tbody/tr/td/table/tbody/tr/td/table/tbody/tr/td[2]/div/div/div'
+    
+    assert browse_to(webdriver, page_name="users_list"), "Something wrong happened while navigating to users_list."
+
+    logging.debug(f"get_user_list: parsing users_list page")
+    parsed_page = BeautifulSoup(webdriver.page_source,'html.parser')
+    tree = html.fromstring(str(parsed_page))
+    div_list = tree.xpath(users_xpath)
+
+    for div in div_list:
+        user = div.xpath('text()')[0]
+        logging.debug(f"get_user_list: adding user {user}.")
+        users.append(user)
+
+    return users
+
 def submit_expense(
         webdriver: webdriver,
         description: str,
         amount: str,
         date: str,
         payer_name: str = "",    # unused
-        paid_for_user: str = "" # unused
+        paid_for_user: str = "all",
+        available_users: list = []
     ) -> None:
     """Submits one expense."""
     logging.info(f"Initiating expense submission: [{description}][{amount}][{date}][{payer_name}][{paid_for_user}].")
 
     browse_to(webdriver, page_name="expense_form")
+
+    try:
+        assert browse_to(webdriver, page_name="expense_form"), "Failed browsing to expense_form."
+    except AssertionError:
+        logging.error(f"Exiting. Failed initiating expense submission: [{description}][{amount}][{date}][{payer_name}][{paid_for_user}].")
+        sleep(10)
+        exit(1)
 
     try:
         logging.debug("Filling out expense form.")
@@ -207,6 +244,21 @@ def submit_expense(
         fill_textbox(webdriver, text_xpath=PAYMENT_AMOUNT_XPATH, text_content=amount)
     except Exception as e:
         logging.exception(f"Failed filling out the expense form, skipping expense submission.")
+        return
+
+    try:
+        if paid_for_user != "all":
+            # 'all' is the default selection, no action needed
+            logging.debug(f"Selecting paid for user {paid_for_user}")
+            paid_for_user_list = paid_for_user.split(',')
+
+            for user in available_users:
+                if not (user in paid_for_user_list):
+                    logging.debug(f"Deselecting user {user}")
+                    open_link(webdriver, f'//div[@class="repartitionNameLabel"][text()="{user}"]')
+
+    except Exception as e:
+        logging.exception("Failed selecting paid_for_user")
         return
 
     try:
@@ -219,7 +271,7 @@ def submit_expense(
 def get_submitted_expenses(webdriver: webdriver) -> list:
     """Returns list of retrieved expenses"""
 
-    browse_to(webdriver, page_name="expenses_list")
+    assert browse_to(webdriver, page_name="expenses_list"), "Failed browsing to expenses_list."
 
     payments = []
 
@@ -235,14 +287,13 @@ def get_submitted_expenses(webdriver: webdriver) -> list:
     else:
         logging.debug(f"Retreived {len(div_list)} expense fields to be parsed.")
 
-
     d_idx = 0
     while d_idx < len(div_list):
         payment_num = floor((d_idx) / 7)
         logging.debug(f"Parsing payment entry n. {payment_num}.")
 
         try:
-            # TO DO validate fields
+            # TO DO validate fields/values
             #  'myusername','8.00 EUR','aaaa','13/08/21','all','2.67 EUR',',\xa0'
             payments.append(
                 {
@@ -261,30 +312,24 @@ def get_submitted_expenses(webdriver: webdriver) -> list:
             d_idx += 7
     return payments
 
-def is_eq_date(a: str, b: str) -> bool:
-    ad = {
-        "day":   a.split("/")[0].zfill(2),
-        "month": a.split("/")[1].zfill(2),
-        "year":  a.split("/")[2][-2:] # only last 2 digits
+def parse_date_str(date: str) -> dict:
+    return {
+        "day":   date.split("/")[0].zfill(2),
+        "month": date.split("/")[1].zfill(2),
+        "year":  date.split("/")[2][-2:] # only last 2 digits
     }
 
-    bd = {
-        "day":   b.split("/")[0].zfill(2),
-        "month": b.split("/")[1].zfill(2),
-        "year":  b.split("/")[2][-2:] # only last 2 digits
-    }
-    return ad == bd
+def is_eq_date(a: str, b: str) -> bool:
+    return parse_date_str(a) == parse_date_str(b)
 
 def is_eq_expense(a: dict, b: dict) -> bool:
     """Checks expense equality."""
-    if(     a.get("description") == b.get("description")
+    return (
+        a.get("description") == b.get("description")
         and float(a.get("amount")) == float(b.get("amount"))
         and is_eq_date(a.get("date"), b.get("date"))
         and a.get("payer_name")  == b.get("payer_name")
-        and a.get("paid_for_user")  == b.get("paid_for_user")
-    ):
-        return True
-    return False
+    )
 
 def is_expense_submitted(webdriver: webdriver, expense: dict) -> bool:
     """Checks if expense is present on submitted expenses page.
@@ -307,23 +352,26 @@ def main():
         driver.execute_script("Object.defineProperty(navigator, 'webdriver', {get: () => undefined})")
         logging.debug(f"Initialized Chrome driver.")
 
-        if not browse_to(webdriver=driver, page_name="expenses_list"):
+        user_list = get_user_list(driver)
+        if user_list == []:
             logging.error("Failed opening Tricount. Exiting.")
             exit(1)
 
         with open('expenses.csv', newline='') as file:
             logging.debug("Reading csv file.")
-            expense_list = csv.DictReader(file)
+            expense_list = csv.DictReader(file, delimiter=';')
 
             for expense in expense_list:
+                input("Press ENTER to proceed with next expense...")
+
                 expense_already_submitted = is_expense_submitted(webdriver=driver, expense=expense)
-                choice = ""
+                choice = "n"
 
                 if expense_already_submitted:
                     choice = input(f"Expense already found: {expense} "
-                                   "Confirm re-submission? y/n ").lower()
-                if not expense_already_submitted or choice == "y":
-                    submit_expense(webdriver=driver, **expense)
+                                   "Confirm re-submission? y/[n] ").lower()
+                if (not expense_already_submitted) or choice == "y":
+                    submit_expense(webdriver=driver, **expense, available_users=user_list)
 
                     if not is_expense_submitted(webdriver=driver, expense=expense):
                         logging.error(f"Failed verifying expense {expense} submission, exiting.")
@@ -332,8 +380,7 @@ def main():
                         logging.info(f"Confirmed submission of expense {expense}")
                 else:
                     logging.info(f"Skipping {expense}")
-                
-                input("Press ENTER to proceed with next expense...")
-    
+
+
 if __name__ == '__main__':
     main()
