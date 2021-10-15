@@ -1,5 +1,10 @@
-# tricount-scraper
-As the name suggests.
+# tricount-cli
+Unofficial cli client to interact with [tricount.com](https://tricount.com).
+
+Developed in response of unavailability of tricount's API for public use.
+
+## Features
+_TBD_
 
 ## Requirements
 Install [Chrome WebDriver](https://chromedriver.chromium.org/getting-started) and Python dependencies.
