@@ -1,18 +1,19 @@
 #!/usr/bin/env python3
 
+import argparse
 import csv
 import logging
-from math import floor
-from time import sleep
 
 from bs4 import BeautifulSoup
 from lxml import html  # nosec - should replace with defusedxml equivalent
+from math import floor
 from selenium import webdriver
 from selenium.common.exceptions import TimeoutException
 from selenium.webdriver import ChromeOptions
 from selenium.webdriver.common.by import By
 from selenium.webdriver.support import expected_conditions
 from selenium.webdriver.support.ui import WebDriverWait
+from time import sleep
 
 from const import (
     ADD_EXPENSE_XPATH,
@@ -408,7 +409,50 @@ def is_expense_submitted(webdriver: webdriver, expense: dict) -> bool:
     return False
 
 
+def get_args():
+    parser = argparse.ArgumentParser(
+        description="tricount-cli - Unofficial CLI for tricount.com",
+        epilog="Reads expense entries from CSV and submits them to tricount.",
+        formatter_class=argparse.ArgumentDefaultsHelpFormatter,
+    )
+
+    parser.add_argument(
+        "-u",
+        "--url",
+        dest="tricount_url",
+        help="URL to your Tricount. Format: 'https://tricount.com/en/abcdefgihjklm'",
+    )
+
+    parser.add_argument("-n", "--username", dest="username", help="Your username on Tricount.")
+
+    parser.add_argument(
+        "-f", "--file-path", dest="file_path", default="/expenses.csv", help="Path to the CSV file."
+    )
+
+    parser.add_argument(
+        "-l",
+        "--log-level",
+        dest="log_level",
+        default="WARNING",
+        choices=["CRITICAL", "ERROR", "WARNING", "INFO", "DEBUG"],
+        help="Set log level.",
+    )
+
+    parser.add_argument(
+        "-c",
+        "--check-submission",
+        dest="check_submission",
+        default="True",
+        choices=["True", "False"],
+        help="Verify each entry after submission.",
+    )
+
+    return parser
+
+
 def main():
+    args = get_args().parse_args()
+
     # prevent bot detection
     webdriver_options = ChromeOptions()
     webdriver_options.add_argument("--headless")
@@ -426,28 +470,38 @@ def main():
             logging.error("Failed opening Tricount. Exiting.")
             exit(1)
 
-        with open("expenses.csv", newline="") as file:
+        with open(args.file_path, newline="") as file:
             logging.debug("Reading csv file.")
             expense_list = csv.DictReader(file, delimiter=";")
 
             for expense in expense_list:
                 input("Press ENTER to proceed with next expense...")
 
-                expense_already_submitted = is_expense_submitted(webdriver=driver, expense=expense)
                 choice = "n"
+                expense_already_submitted = False
 
-                if expense_already_submitted:
+                if not args.check_submission:
+                    expense_already_submitted = is_expense_submitted(
+                        webdriver=driver, expense=expense
+                    )
+
+                if expense_already_submitted and args.check_submission:
                     choice = input(
                         f"Expense already found: {expense} " "Confirm re-submission? y/[n] "
                     ).lower()
-                if (not expense_already_submitted) or choice == "y":
+                if not (expense_already_submitted and args.check_submission) or choice == "y":
                     submit_expense(webdriver=driver, **expense, available_users=user_list)
 
-                    if not is_expense_submitted(webdriver=driver, expense=expense):
-                        logging.error(f"Failed verifying expense {expense} submission, exiting.")
-                        exit(1)
+                    if args.check_submission:
+                        if not is_expense_submitted(webdriver=driver, expense=expense):
+                            logging.error(
+                                f"Failed verifying expense {expense} submission, exiting."
+                            )
+                            exit(1)
+                        else:
+                            logging.info(f"Confirmed submission of expense {expense}")
                     else:
-                        logging.info(f"Confirmed submission of expense {expense}")
+                        logging.info(f"Expense {expense} submitted, skipped checking.")
                 else:
                     logging.info(f"Skipping {expense}")
 
