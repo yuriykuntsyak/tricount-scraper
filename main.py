@@ -147,7 +147,7 @@ def open_link(webdriver: webdriver, link_xpath: str) -> None:
     """
     Find the link by it's xpath and performs a mouse click.
     """
-    webdriver.find_element_by_xpath(link_xpath).click()
+    webdriver.find_element(By.XPATH, link_xpath).click()
 
 
 def current_page_name(webdriver: webdriver, valid_url: str = "tricount.com") -> str:
@@ -236,7 +236,7 @@ def browse_to(webdriver: webdriver, url: str, page_name: str, nav_steps_limit: i
                 webdriver, locator=By.ID, elements_list=[IFRAME_ID], elements_description="iframe"
             )
             logging.debug(f"browse_to: Switching to iframe {IFRAME_ID}.")
-            webdriver.switch_to.frame(webdriver.find_element_by_id(IFRAME_ID))
+            webdriver.switch_to.frame(webdriver.find_element(By.ID, IFRAME_ID))
 
             logging.debug("browse_to: Navigating to expense list for user.")
             if not is_on_users_list(webdriver):
@@ -249,7 +249,7 @@ def browse_to(webdriver: webdriver, url: str, page_name: str, nav_steps_limit: i
 
 def fill_textbox(webdriver: webdriver, text_xpath: str, text_content: str) -> None:
     """Fills out a text box located by xpath."""
-    webdriver.find_element_by_xpath(text_xpath).send_keys(text_content)
+    webdriver.find_element(By.XPATH, text_xpath).send_keys(text_content)
 
 
 def get_user_list(webdriver: webdriver, url: str) -> list:
