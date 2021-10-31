@@ -18,21 +18,17 @@ from time import sleep
 from const import (
     ADD_EXPENSE_XPATH,
     DRIVER_WAIT_TIMEOUT,
-    ELEMENTS_PER_PAGE,
     EXPENSES_DIVS_XPATH,
     IFRAME_ID,
-    LOGLEVEL,
     PAGE_NAV_ORDER,
     PAYMENT_AMOUNT_XPATH,
     PAYMENT_DATE_XPATH,
     PAYMENT_DESCRIPTION_XPATH,
     PAYMENTS_TABLE_XPATH,
     SAVE_PAYMENT_XPATH,
-    TRICOUNT_URL,
-    USER_XPATH,
+    USERS_LIST_XPATH,
+    ELEMENTS_PER_PAGE,
 )
-
-logging.basicConfig(level=int(LOGLEVEL))
 
 
 class ElementNotLoadedError(Exception):
@@ -109,7 +105,7 @@ def is_on_users_list(webdriver: webdriver) -> bool:
         wait_for_elements_presence(
             webdriver,
             locator=By.XPATH,
-            elements_list=[USER_XPATH],
+            elements_list=[USERS_LIST_XPATH],
             elements_description="user list",
         )
     except ElementNotLoadedError:
@@ -183,7 +179,7 @@ def current_page_name(webdriver: webdriver, valid_url: str = "tricount.com") -> 
         raise InvalidPageError
 
 
-def browse_to(webdriver: webdriver, page_name: str, nav_steps_limit: int = 10) -> bool:
+def browse_to(webdriver: webdriver, url: str, page_name: str, nav_steps_limit: int = 10) -> bool:
     """
     Navigates, by following pages listed in PAGE_NAV_ORDER, until specified page.
 
@@ -233,8 +229,8 @@ def browse_to(webdriver: webdriver, page_name: str, nav_steps_limit: int = 10) -
 
         else:
             # browse to initial page
-            logging.debug(f"browse_to: running HTTP GET {TRICOUNT_URL}")
-            webdriver.get(url=TRICOUNT_URL)
+            logging.debug(f"browse_to: running HTTP GET {url}")
+            webdriver.get(url=url)
             logging.debug("browse_to: ensuring iframe is loaded")
             wait_for_elements_presence(
                 webdriver, locator=By.ID, elements_list=[IFRAME_ID], elements_description="iframe"
@@ -246,7 +242,9 @@ def browse_to(webdriver: webdriver, page_name: str, nav_steps_limit: int = 10) -
             if not is_on_users_list(webdriver):
                 logging.error("browse_to: failed loading users list page.")
 
-        return browse_to(webdriver, page_name=page_name, nav_steps_limit=nav_steps_limit - 1)
+        return browse_to(
+            webdriver, url=url, page_name=page_name, nav_steps_limit=nav_steps_limit - 1
+        )
 
 
 def fill_textbox(webdriver: webdriver, text_xpath: str, text_content: str) -> None:
@@ -254,12 +252,12 @@ def fill_textbox(webdriver: webdriver, text_xpath: str, text_content: str) -> No
     webdriver.find_element_by_xpath(text_xpath).send_keys(text_content)
 
 
-def get_user_list(webdriver: webdriver) -> list:
+def get_user_list(webdriver: webdriver, url: str) -> list:
     """Gets list of users from users_list page."""
     users = []
     users_xpath = '//*[@id="slot1"]/table/tbody/tr[4]/td/table/tbody/tr/td[2]/div/table/tbody/tr/td[1]/div/div/table/tbody/tr/td/table/tbody/tr/td/table/tbody/tr/td[2]/div/div/div'  # noqa
 
-    if not browse_to(webdriver, page_name="users_list"):
+    if not browse_to(webdriver, url=url, page_name="users_list"):
         logging.error("Something wrong happened while navigating to users_list.")
 
     logging.debug("get_user_list: parsing users_list page")
@@ -277,6 +275,7 @@ def get_user_list(webdriver: webdriver) -> list:
 
 def submit_expense(
     webdriver: webdriver,
+    url: str,
     description: str,
     amount: str,
     date: str,
@@ -290,9 +289,9 @@ def submit_expense(
         f"[{description}][{amount}][{date}][{payer_name}][{paid_for_user}]."
     )
 
-    browse_to(webdriver, page_name="expense_form")
+    browse_to(webdriver, url=url, page_name="expense_form")
 
-    if not browse_to(webdriver, page_name="expense_form"):
+    if not browse_to(webdriver, url=url, page_name="expense_form"):
         logging.error(
             "Failed browsing to expense_form. "
             "Exiting. Failed initiating expense submission: "
@@ -333,10 +332,10 @@ def submit_expense(
         logging.debug("Successfully submitted the expense.")
 
 
-def get_submitted_expenses(webdriver: webdriver) -> list:
+def get_submitted_expenses(webdriver: webdriver, url: str) -> list:
     """Returns list of retrieved expenses"""
 
-    browse_to(webdriver, page_name="expenses_list"), "Failed browsing to expenses_list."
+    browse_to(webdriver, url=url, page_name="expenses_list"), "Failed browsing to expenses_list."
 
     payments = []
 
@@ -398,11 +397,11 @@ def is_eq_expense(a: dict, b: dict) -> bool:
     )
 
 
-def is_expense_submitted(webdriver: webdriver, expense: dict) -> bool:
+def is_expense_submitted(webdriver: webdriver, url: str, expense: dict) -> bool:
     """Checks if expense is present on submitted expenses page.
     Looks only for the first occurrence. Further tweaking might be required.
     """
-    for submitted in get_submitted_expenses(webdriver):
+    for submitted in get_submitted_expenses(webdriver, url):
         if is_eq_expense(submitted, expense):
             logging.debug(f"is_expense_submitted: found matching expense {expense}.")
             return True
@@ -437,7 +436,7 @@ def get_args():
         "-l",
         "--log-level",
         dest="log_level",
-        default="WARNING",
+        default="INFO",
         choices=["CRITICAL", "ERROR", "WARNING", "INFO", "DEBUG"],
         help="Set log level.",
     )
@@ -457,6 +456,21 @@ def get_args():
 def main():
     args = get_args().parse_args()
 
+    TRICOUNT_URL = args.tricount_url
+    LOGLEVEL = args.log_level
+
+    USER_XPATH = (
+        '//*[@id="slot1"]/table/tbody/tr[4]/td/table/tbody/tr/td[2]/div'
+        "/table/tbody/tr/td[1]/div/div/table/tbody/tr/td/table/tbody/tr/td/"
+        f'table/tbody/tr/td[2]/div/div/div[text()="{args.username}"]'
+    )
+
+    ELEMENTS_PER_PAGE["users_list"]["elements"] = [USER_XPATH]
+
+    check_submission = False if args.check_submission == "False" else True
+
+    logging.basicConfig(level=LOGLEVEL)
+
     # prevent bot detection
     webdriver_options = ChromeOptions()
     webdriver_options.add_argument("--headless")
@@ -469,7 +483,7 @@ def main():
         )
         logging.debug("Initialized Chrome driver.")
 
-        user_list = get_user_list(driver)
+        user_list = get_user_list(driver, url=TRICOUNT_URL)
         if user_list == []:
             logging.error("Failed opening Tricount. Exiting.")
             exit(1)
@@ -484,20 +498,24 @@ def main():
                 choice = "n"
                 expense_already_submitted = False
 
-                if not args.check_submission:
+                if not check_submission:
                     expense_already_submitted = is_expense_submitted(
-                        webdriver=driver, expense=expense
+                        webdriver=driver, url=TRICOUNT_URL, expense=expense
                     )
 
-                if expense_already_submitted and args.check_submission:
+                if expense_already_submitted and check_submission:
                     choice = input(
                         f"Expense already found: {expense} " "Confirm re-submission? y/[n] "
                     ).lower()
-                if not (expense_already_submitted and args.check_submission) or choice == "y":
-                    submit_expense(webdriver=driver, **expense, available_users=user_list)
+                if not (expense_already_submitted and check_submission) or choice == "y":
+                    submit_expense(
+                        webdriver=driver, url=TRICOUNT_URL, **expense, available_users=user_list
+                    )
 
-                    if args.check_submission:
-                        if not is_expense_submitted(webdriver=driver, expense=expense):
+                    if check_submission:
+                        if not is_expense_submitted(
+                            webdriver=driver, url=TRICOUNT_URL, expense=expense
+                        ):
                             logging.error(
                                 f"Failed verifying expense {expense} submission, exiting."
                             )

@@ -41,7 +41,7 @@ optional arguments:
   -f FILE_PATH, --file-path FILE_PATH
                         Path to the CSV file. (default: ./expenses.csv)
   -l {CRITICAL,ERROR,WARNING,INFO,DEBUG}, --log-level {CRITICAL,ERROR,WARNING,INFO,DEBUG}
-                        Set log level. (default: WARNING)
+                        Set log level. (default: INFO)
   -c {True,False}, --check-submission {True,False}
                         Verify each entry after submission. (default: True)
 
