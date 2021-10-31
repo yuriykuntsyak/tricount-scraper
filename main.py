@@ -459,12 +459,7 @@ def main():
     TRICOUNT_URL = args.tricount_url
     LOGLEVEL = args.log_level
 
-    USER_XPATH = (
-        '//*[@id="slot1"]/table/tbody/tr[4]/td/table/tbody/tr/td[2]/div'
-        "/table/tbody/tr/td[1]/div/div/table/tbody/tr/td/table/tbody/tr/td/"
-        f'table/tbody/tr/td[2]/div/div/div[text()="{args.username}"]'
-    )
-
+    USER_XPATH = f"//div[@class='gwt-Label identifiezVousUserLabel'][text()='{args.username}']"
     ELEMENTS_PER_PAGE["users_list"]["elements"] = [USER_XPATH]
 
     check_submission = False if args.check_submission == "False" else True

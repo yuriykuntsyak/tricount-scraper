@@ -2,31 +2,18 @@ from selenium.webdriver.common.by import By
 
 DRIVER_WAIT_TIMEOUT = 3
 
-PAID_FOR_USERS = '//div[@class="repartitionNameLabel"]'
-SAVE_PAYMENT_XPATH = (
-    '//*[@id="slot1"]/table/tbody/tr[5]/td/div/table/tbody/tr/td/table/tbody/tr/td[1]/a'
-)
-PAYMENT_AMOUNT_XPATH = '//*[@id="slot1"]/table/tbody/tr[4]/td/table/tbody/tr/td[2]/div/div/div/table/tbody/tr[4]/td/table/tbody/tr/td[1]/table/tbody/tr/td[2]/input'  # noqa
-PAYMENT_DATE_XPATH = '//*[@id="slot1"]/table/tbody/tr[4]/td/table/tbody/tr/td[2]/div/div/div/table/tbody/tr[3]/td/table/tbody/tr/td[1]/table/tbody/tr/td[2]/input'  # noqa
-PAYER_DD_XPATH = '//*[@id="slot1"]/table/tbody/tr[4]/td/table/tbody/tr/td[2]/div/div/div/table/tbody/tr[2]/td/table/tbody/tr/td[1]/table/tbody/tr/td[2]/select'  # noqa
-PAYMENT_DESCRIPTION_XPATH = '//*[@id="slot1"]/table/tbody/tr[4]/td/table/tbody/tr/td[2]/div/div/div/table/tbody/tr[1]/td/table/tbody/tr/td[1]/table/tbody/tr/td[2]/input'  # noqa
-ADD_EXPENSE_XPATH = (
-    '//*[@id="slot1"]/table/tbody/tr[5]/td/div/table/tbody/tr/td/table/tbody/tr/td/a'
-)
+PAID_FOR_USERS = "//div[@class='repartitionNameLabel']"
+SAVE_PAYMENT_XPATH = "//a[@class='footerPanelText'][text()='Save']"
+PAYMENT_AMOUNT_XPATH = "//div[@class='inputFieldLabel'][text()='Amount:']/../../td/input"
+PAYMENT_DATE_XPATH = "//div[@class='inputFieldLabel'][text()='Date (optional):']/../../td/input"
+PAYER_DD_XPATH = "//div[@class='inputFieldLabel'][text()='Who paid?:']/../../td/select"
+PAYMENT_DESCRIPTION_XPATH = "//div[@class='inputFieldLabel'][text()='What:']/../../td/input"
+ADD_EXPENSE_XPATH = "//a[@class='footerPanelText'][text()='Add an expense']"
 IFRAME_ID = "module-web"
-PAYMENTS_TABLE_XPATH = (
-    '//*[@id="slot1"]/table/tbody/tr[4]/td/table/tbody/tr/td[2]/div/div/div/table'
-)
+PAYMENTS_TABLE_XPATH = "//table[@class='paymentPanel']"
 PAYMENTS_TABLE_CLASS = "paymentPanel"
-EXPENSES_DIVS_XPATH = (
-    '//div[@class="paymentListContent"]|//a[@class="paymentListContent"]'  # mix of div and a
-)
-
-USERS_LIST_XPATH = (
-    '//*[@id="slot1"]/table/tbody/tr[4]/td/table/tbody/tr/td[2]/div/'
-    "table/tbody/tr/td[1]/div/div/table/tbody/tr[1]/td/"
-    "table/tbody/tr/td/table/tbody/tr/td[2]/div/div/div"
-)
+EXPENSES_DIVS_XPATH = "//div[@class='paymentListContent']|//a[@class='paymentListContent']"
+USERS_LIST_XPATH = "//div[@class='gwt-Label identifiezVousUserLabel']"
 
 ELEMENTS_PER_PAGE = {
     "pre_users_list": {"locator": By.ID, "elements": [IFRAME_ID]},
