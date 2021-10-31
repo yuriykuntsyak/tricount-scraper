@@ -412,7 +412,7 @@ def is_expense_submitted(webdriver: webdriver, expense: dict) -> bool:
 def get_args():
     parser = argparse.ArgumentParser(
         description="tricount-cli - Unofficial CLI for tricount.com",
-        epilog="Reads expense entries from CSV and submits them to tricount.",
+        epilog="Reads expense entries from CSV and submits them to tricount.com.",
         formatter_class=argparse.ArgumentDefaultsHelpFormatter,
     )
 
@@ -426,7 +426,11 @@ def get_args():
     parser.add_argument("-n", "--username", dest="username", help="Your username on Tricount.")
 
     parser.add_argument(
-        "-f", "--file-path", dest="file_path", default="/expenses.csv", help="Path to the CSV file."
+        "-f",
+        "--file-path",
+        dest="file_path",
+        default="./expenses.csv",
+        help="Path to the CSV file.",
     )
 
     parser.add_argument(

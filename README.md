@@ -1,7 +1,7 @@
 # tricount-cli
 Unofficial cli client to interact with [tricount.com](https://tricount.com).
 
-Developed in response of unavailability of tricount's API for public use.
+Developed in response of unavailability of Tricount's API for public use.
 
 ## Features
 _TBD_
@@ -18,7 +18,7 @@ pip3 install -r requirements.txt
 ```
 
 ## Usage
-File `./expenses.csv` should follow the following format:
+File `expenses.csv` should follow the following format:
 ```csv
 date;amount;description;payer_name;paid_for_user
 1/1/2021;1.1;test payment 1;user1;all
@@ -28,5 +28,22 @@ date;amount;description;payer_name;paid_for_user
 
 Run the script:
 ```sh
-TRICOUNT_URL=https://tricount.com/en/abcdefghijklm USER_NAME=myusername LOGLEVEL=20 ./main.py
+usage: main.py [-h] [-u TRICOUNT_URL] [-n USERNAME] [-f FILE_PATH] [-l {CRITICAL,ERROR,WARNING,INFO,DEBUG}] [-c {True,False}]
+
+tricount-cli - Unofficial CLI for tricount.com
+
+optional arguments:
+  -h, --help            show this help message and exit
+  -u TRICOUNT_URL, --url TRICOUNT_URL
+                        URL to your Tricount. Format: 'https://tricount.com/en/abcdefgihjklm' (default: None)
+  -n USERNAME, --username USERNAME
+                        Your username on Tricount. (default: None)
+  -f FILE_PATH, --file-path FILE_PATH
+                        Path to the CSV file. (default: ./expenses.csv)
+  -l {CRITICAL,ERROR,WARNING,INFO,DEBUG}, --log-level {CRITICAL,ERROR,WARNING,INFO,DEBUG}
+                        Set log level. (default: WARNING)
+  -c {True,False}, --check-submission {True,False}
+                        Verify each entry after submission. (default: True)
+
+Reads expense entries from CSV and submits them to tricount.com.
 ```
