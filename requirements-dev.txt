@@ -4,5 +4,6 @@ lxml==4.6.3
 selenium==4.0.0
 soupsieve==2.2.1
 urllib3==1.26.7
+pydantic==1.8.2
 
 pre-commit
