@@ -3,6 +3,6 @@ bs4==0.0.1
 lxml==5.0.0
 selenium==4.5.0
 soupsieve==2.5
-urllib3==1.26.19
+urllib3==2.2.2
 
 pre-commit
